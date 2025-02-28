@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>信号强度交互演示系统</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f0f0f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+        }
+        h2 {
+            color: #2c3e50;
+            margin: 20px 0;
+        }
+        #demoContainer {
+            width: 800px;
+            height: 500px;
+            position: relative;
+            border: 2px solid #3498db;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+            overflow: hidden;
+        }
+        #mainStation {
+            position: absolute;
+            font-size: 64px;
+            transform: translate(-50%, -50%);
+            left: 50%;
+            top: 50%;
+            z-index: 100;
+        }
+        #user {
+            position: absolute;
+            font-size: 32px;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s;
+            z-index: 1000;
+        }
+        .infoPanel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            min-width: 200px;
+        }
+        .rateDisplay {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .rateValue {
+            color: #2980b9;
+            font-weight: 700;
+        }
+        .signalIndicator {
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            background: linear-gradient(90deg, #e74c3c, #f1c40f, #2ecc71);
+        }
+        #musicControl {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: #3498db;
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <h2>信号强度交互演示系统</h2>
+    <div id="demoContainer">
+        <div id="mainStation">📡</div>
+        <div id="user">😀</div>
+    </div>
+
+    <div class="infoPanel">
+        <div class="rateDisplay">
+            <span>4G速率：</span>
+            <span id="4g" class="rateValue">0 Mbps</span>
+        </div>
+        <div class="rateDisplay">
+            <span>5G速率：</span>
+            <span id="5g" class="rateValue">0 Mbps</span>
+        </div>
+        <div class="signalIndicator"></div>
+    </div>
+
+    <div id="musicControl" onclick="toggleAudio()">🎵 音效控制</div>
+
+    <audio id="bgm" loop>
+        <source src="music.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // 修改参数部分
+        const SIGNAL = {
+            '4G': { max: 100, range: 300 },  // 4G保持100Mbps
+            '5G': { max: 1000, range: 150 }  // 5G调整为1000Mbps
+        };
+        const BASE_VOLUME = 0.6;
+
+        const demoContainer = document.getElementById('demoContainer');
+        const user = document.getElementById('user');
+        const bgm = document.getElementById('bgm');
+        let userX = demoContainer.offsetWidth/2;
+        let userY = demoContainer.offsetHeight/2;
+        let isAudioEnabled = false;
+
+        function updateSignal() {
+            const stationX = demoContainer.offsetWidth/2;
+            const stationY = demoContainer.offsetHeight/2;
+            
+            const dx = userX - stationX;
+            const dy = userY - stationY;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+
+            // 计算信号强度（使用新参数）
+            const signal4G = Math.round(SIGNAL['4G'].max * Math.max(0, 1 - (distance/SIGNAL['4G'].range)**2));
+            const signal5G = Math.round(SIGNAL['5G'].max * Math.max(0, 1 - (distance/SIGNAL['5G'].range)**2));
+            const maxSignal = Math.max(signal4G, signal5G);
+
+            // 更新显示
+            document.getElementById('4g').textContent = signal4G + ' Mbps';
+            document.getElementById('5g').textContent = signal5G + ' Mbps';
+
+            // 更新信号条（适配1000Mbps）
+            const indicator = document.querySelector('.signalIndicator');
+            indicator.style.background = `linear-gradient(90deg, 
+                #e74c3c ${maxSignal/10}%, 
+                #f1c40f ${maxSignal/2}%, 
+                #2ecc71 ${maxSignal}%)`;
+
+            // 修改音量控制逻辑
+            if(isAudioEnabled) {
+                const volumeScale = maxSignal > 0 ? Math.min(1, maxSignal/1000) : 0;
+                bgm.volume = BASE_VOLUME * volumeScale;
+            }
+        }
+
+        // 其余代码保持不变
+        function toggleAudio() {
+            isAudioEnabled = !isAudioEnabled;
+            document.getElementById('musicControl').textContent = `🎵 ${isAudioEnabled ? '关闭' : '开启'}音效`;
+            isAudioEnabled ? bgm.play() : bgm.pause();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const speed = 8;
+            const boundCheck = (value, max) => Math.max(40, Math.min(max - 40, value));
+            
+            switch(e.key) {
+                case 'ArrowUp': userY = boundCheck(userY - speed, demoContainer.offsetHeight); break;
+                case 'ArrowDown': userY = boundCheck(userY + speed, demoContainer.offsetHeight); break;
+                case 'ArrowLeft': userX = boundCheck(userX - speed, demoContainer.offsetWidth); break;
+                case 'ArrowRight': userX = boundCheck(userX + speed, demoContainer.offsetWidth); break;
+            }
+            
+            user.style.left = userX + 'px';
+            user.style.top = userY + 'px';
+            updateSignal();
+        });
+
+        // 初始化自动播放
+        document.addEventListener('click', () => {
+            bgm.play().then(() => {
+                isAudioEnabled = true;
+                document.getElementById('musicControl').textContent = '🎵 关闭音效';
+            });
+        }, { once: true });
+
+        user.style.left = userX + 'px';
+        user.style.top = userY + 'px';
+        updateSignal();
+    </script>
+</body>
+</html>
